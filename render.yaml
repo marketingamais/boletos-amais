@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: boleto-amais-puppeteer
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: node src/server.js
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: PORTAL_URL
+        value: https://amais.io/negociar
+      - key: SESSION_TIMEOUT_MS
+        value: "600000"
+      - key: API_KEY
+        sync: false

@@ -6,6 +6,16 @@ const app = express();
 
 app.use(express.json());
 
+// Autenticação por API Key (exceto /health)
+app.use((req, res, next) => {
+  if (req.path === '/health') return next();
+  const apiKey = process.env.API_KEY;
+  if (apiKey && req.headers['x-api-key'] !== apiKey) {
+    return res.status(401).json({ sucesso: false, erro: 'Não autorizado' });
+  }
+  next();
+});
+
 app.use(require('../routes/health'));
 app.use(require('../routes/sessao'));
 app.use(require('../routes/confirmar'));

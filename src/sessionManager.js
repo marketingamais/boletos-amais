@@ -9,7 +9,15 @@ const sessions = new Map();
 async function criarSessao() {
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-first-run',
+      '--no-zygote',
+      '--single-process',
+    ],
   });
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
