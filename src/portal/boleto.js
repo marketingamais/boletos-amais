@@ -3,6 +3,14 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+async function verificarBoletoDisponivel(frame) {
+  await new Promise(r => setTimeout(r, 1000));
+  return frame.evaluate(() => {
+    const btn = document.querySelector('#btnSalvarBoleto');
+    return btn && !btn.disabled && !btn.classList.contains('hidden');
+  });
+}
+
 async function gerarBoleto(page, frame) {
   await frame.waitForSelector('#btnSalvarBoleto:not([disabled])');
 
@@ -58,4 +66,4 @@ async function extrairLinhaDigitavel(pdfBuffer) {
   }
 }
 
-module.exports = { gerarBoleto };
+module.exports = { gerarBoleto, verificarBoletoDisponivel };

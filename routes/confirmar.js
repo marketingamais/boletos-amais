@@ -2,7 +2,7 @@ const { Router } = require('express');
 const { obterSessao, encerrarSessao } = require('../src/sessionManager');
 const { confirmarAVista } = require('../src/portal/condicao');
 const { preencherDados } = require('../src/portal/dados');
-const { gerarBoleto } = require('../src/portal/boleto');
+const { gerarBoleto, verificarBoletoDisponivel } = require('../src/portal/boleto');
 
 const router = Router();
 
@@ -21,12 +21,24 @@ router.post('/sessao/:id/confirmar', async (req, res) => {
   const { page, frame } = sessao;
 
   await confirmarAVista(frame);
-  await preencherDados(frame, { email, telefone1, telefone2, endereco, bairro, cidade, uf, cep });
-  const { pdfBase64, linhaDigitavel, boletoUrl } = await gerarBoleto(page, frame);
+  const { nomeAluno } = await preencherDados(frame, { email, telefone1, telefone2, endereco, bairro, cidade, uf, cep });
 
+  const boletoDisponivel = await verificarBoletoDisponivel(frame);
+
+  if (!boletoDisponivel) {
+    await encerrarSessao(id);
+    const primeiroNome = nomeAluno.split(' ')[0] || nomeAluno;
+    return res.json({
+      sucesso: true,
+      tipoBoleto: 'email',
+      mensagem: `Perfeito, ${primeiroNome}! Já lançamos a sua negociação em nosso portal e em breve o boleto chegará no seu e-mail. Obrigado!`,
+    });
+  }
+
+  const { pdfBase64, linhaDigitavel } = await gerarBoleto(page, frame);
   await encerrarSessao(id);
 
-  res.json({ sucesso: true, linhaDigitavel, pdfBase64, boletoUrl });
+  res.json({ sucesso: true, tipoBoleto: 'boleto', linhaDigitavel, pdfBase64 });
 });
 
 module.exports = router;

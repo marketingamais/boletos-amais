@@ -13,6 +13,9 @@ async function preencherCampo(frame, seletor, valor) {
 async function preencherDados(frame, dados) {
   await frame.waitForSelector(FORM);
 
+  // Captura o nome do aluno (campo read-only preenchido pelo portal)
+  const nomeAluno = await frame.$eval(`${FORM} #nomeClienteAtu`, el => el.value || el.textContent || '').catch(() => '');
+
   // Nome é read-only no portal — não preenchemos
   await preencherCampo(frame, `${FORM} #inptEmail`, dados.email);
   await preencherCampo(frame, `${FORM} [name="FONE1"]`, dados.telefone1);
@@ -40,6 +43,8 @@ async function preencherDados(frame, dados) {
 
   // Aguarda tabela de acompanhamento ser populada (sucesso da negociação)
   await frame.waitForSelector('#tblAcompanhamento tbody tr', { timeout: 20000 });
+
+  return { nomeAluno: nomeAluno.trim() };
 }
 
 module.exports = { preencherDados };
