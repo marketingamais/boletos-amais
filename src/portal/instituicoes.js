@@ -28,7 +28,9 @@ async function selecionarInstituicao(frame, indice) {
     () => !document.querySelector('#btnAvancar')?.disabled,
     { timeout: 5000 }
   );
-  await frame.evaluate(() => document.querySelector('#btnAvancar').click());
+  // frame.click() usa eventos de mouse completos (mousedown/mouseup/click) que o
+  // portal precisa para disparar o AJAX; frame.evaluate/.click() nao e suficiente
+  await frame.click('#btnAvancar');
 
   // Aguarda tabela de parcelas ser populada
   await frame.waitForSelector('#tblParcela tbody tr', { timeout: 15000 });
