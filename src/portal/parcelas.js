@@ -1,5 +1,7 @@
-const { clicarBotao } = require('./helpers');
+const { avancarEAguardar } = require('./helpers');
 
+// Seleciona todas as parcelas e avanca para a tela de condicao.
+// Retorna { parcelas, frame } onde frame ja e o da nova tela.
 async function selecionarTodasParcelas(frame, page) {
   await frame.waitForSelector('#tblParcela tbody tr');
 
@@ -16,12 +18,12 @@ async function selecionarTodasParcelas(frame, page) {
   );
 
   // Clica na primeira linha (rola ate ela antes, evitando "not clickable")
-  await linhas[0].scrollIntoViewIfNeeded?.().catch(() => {});
+  try { await linhas[0].scrollIntoViewIfNeeded(); } catch (_) {}
   await linhas[0].click();
 
   // SHIFT+click na última para selecionar todas
   if (linhas.length > 1) {
-    await linhas[linhas.length - 1].scrollIntoViewIfNeeded?.().catch(() => {});
+    try { await linhas[linhas.length - 1].scrollIntoViewIfNeeded(); } catch (_) {}
     await page.keyboard.down('Shift');
     await linhas[linhas.length - 1].click();
     await page.keyboard.up('Shift');
@@ -32,12 +34,13 @@ async function selecionarTodasParcelas(frame, page) {
     () => !document.querySelector('#btnAvancar')?.disabled,
     { timeout: 5000 }
   );
-  await clicarBotao(frame, '#btnAvancar');
 
-  // Aguarda tabela de condição ser populada
-  await frame.waitForSelector('#tblCondicao tbody tr', { timeout: 15000 });
+  // Avanca e re-adquire o frame ja na tela de condicao
+  const novoFrame = await avancarEAguardar(frame, page, '#btnAvancar', '#tblCondicao tbody tr', {
+    timeoutPorTentativa: 10000,
+  });
 
-  return parcelas;
+  return { parcelas, frame: novoFrame };
 }
 
 module.exports = { selecionarTodasParcelas };

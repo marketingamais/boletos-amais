@@ -29,11 +29,13 @@ router.post('/sessao/iniciar', async (req, res) => {
       return res.status(404).json({ sucesso: false, erro: 'Nenhuma dívida encontrada para este CPF.' });
     }
 
-    // Uma única instituição: avança automaticamente até a condição
+    // Uma única instituição: avança automaticamente até a condição.
+    // Cada etapa renavega o iframe e devolve o frame da tela seguinte.
     if (instituicoes.length === 1) {
-      await selecionarInstituicao(frame, 0);
-      const parcelas = await selecionarTodasParcelas(frame, page);
-      const { valor, vencimento } = await lerCondicao(frame);
+      const frameParcelas = await selecionarInstituicao(frame, page, 0);
+      const { parcelas, frame: frameCondicao } = await selecionarTodasParcelas(frameParcelas, page);
+      const { valor, vencimento } = await lerCondicao(frameCondicao);
+      sessao.frame = frameCondicao;
 
       return res.json({
         sessionId,
@@ -68,9 +70,10 @@ router.post('/sessao/:id/selecionar-instituicao', async (req, res) => {
     sessao.frame = frame;
 
     const instituicoes = await listarInstituicoes(frame);
-    await selecionarInstituicao(frame, indice);
-    const parcelas = await selecionarTodasParcelas(frame, page);
-    const { valor, vencimento } = await lerCondicao(frame);
+    const frameParcelas = await selecionarInstituicao(frame, page, indice);
+    const { parcelas, frame: frameCondicao } = await selecionarTodasParcelas(frameParcelas, page);
+    const { valor, vencimento } = await lerCondicao(frameCondicao);
+    sessao.frame = frameCondicao;
 
     res.json({ instituicao: instituicoes[indice]?.nome || '', valorTotal: valor, vencimento, parcelas });
   } catch (err) {

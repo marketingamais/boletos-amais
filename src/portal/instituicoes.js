@@ -1,4 +1,4 @@
-const { clicarBotao } = require('./helpers');
+const { avancarEAguardar } = require('./helpers');
 
 async function listarInstituicoes(frame) {
   await frame.waitForSelector('#tblContrato tbody tr');
@@ -13,14 +13,15 @@ async function listarInstituicoes(frame) {
   );
 }
 
-async function selecionarInstituicao(frame, indice) {
+// Seleciona a instituicao pelo indice e avanca para a tela de parcelas.
+// Retorna o frame da nova tela (o iframe renavega ao avancar).
+async function selecionarInstituicao(frame, page, indice) {
   const count = await frame.evaluate(() =>
     document.querySelectorAll('#tblContrato input[name="selBanco"]').length
   );
   if (indice >= count) throw new Error(`Instituição no índice ${indice} não encontrada (total: ${count}).`);
 
-  // Seleciona o radio via JS (funciona mesmo fora da viewport, sem o check de
-  // clickability do Puppeteer)
+  // Seleciona o radio via JS (funciona mesmo fora da viewport)
   await frame.evaluate((idx) => {
     const radio = document.querySelectorAll('#tblContrato input[name="selBanco"]')[idx];
     radio.scrollIntoView({ block: 'center' });
@@ -32,11 +33,11 @@ async function selecionarInstituicao(frame, indice) {
     () => !document.querySelector('#btnAvancar')?.disabled,
     { timeout: 5000 }
   );
-  // clicarBotao rola ate o botao e usa eventos de mouse reais (necessarios para o AJAX)
-  await clicarBotao(frame, '#btnAvancar');
 
-  // Aguarda tabela de parcelas ser populada
-  await frame.waitForSelector('#tblParcela tbody tr', { timeout: 15000 });
+  // Avanca e re-adquire o frame ja na tela de parcelas
+  return avancarEAguardar(frame, page, '#btnAvancar', '#tblParcela tbody tr', {
+    timeoutPorTentativa: 10000,
+  });
 }
 
 module.exports = { listarInstituicoes, selecionarInstituicao };

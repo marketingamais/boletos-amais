@@ -1,17 +1,11 @@
+const { obterFrame } = require('./helpers');
+
 const PORTAL_URL = process.env.PORTAL_URL || 'https://amais.io/negociar';
 
 // Erros transitorios do Chrome quando o iframe renavega durante o login
 function isFrameDetached(err) {
   const msg = String(err && err.message ? err.message : err);
   return /detached|Target closed|Session closed|frame got detached|Execution context was destroyed/i.test(msg);
-}
-
-async function obterFrame(page) {
-  await page.waitForSelector('#router');
-  const handle = await page.$('#router');
-  const frame = await handle.contentFrame();
-  await frame.waitForSelector('body');
-  return frame;
 }
 
 async function tentarLogin(page, cpf) {

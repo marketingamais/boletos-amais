@@ -1,3 +1,5 @@
+const { obterFrame } = require('./helpers');
+
 // Todos os campos dentro de #formDadosCadastrais para evitar conflito com o modal de perfil
 const FORM = '#formDadosCadastrais';
 
@@ -10,7 +12,7 @@ async function preencherCampo(frame, seletor, valor) {
   await frame.type(seletor, String(valor));
 }
 
-async function preencherDados(frame, dados) {
+async function preencherDados(frame, page, dados) {
   await frame.waitForSelector(FORM);
 
   // Captura o nome do aluno (campo read-only preenchido pelo portal)
@@ -41,10 +43,12 @@ async function preencherDados(frame, dados) {
   });
   if (alertMsg) throw new Error(`Validação do portal: ${alertMsg}`);
 
-  // Aguarda tabela de acompanhamento ser populada (sucesso da negociação)
-  await frame.waitForSelector('#tblAcompanhamento tbody tr', { timeout: 20000 });
+  // Apos o submit o portal pode renavegar o iframe: re-adquire o frame antes de
+  // aguardar a tabela de acompanhamento (sucesso da negociação)
+  const novoFrame = await obterFrame(page);
+  await novoFrame.waitForSelector('#tblAcompanhamento tbody tr', { timeout: 20000 });
 
-  return { nomeAluno: nomeAluno.trim() };
+  return { nomeAluno: nomeAluno.trim(), frame: novoFrame };
 }
 
 module.exports = { preencherDados };

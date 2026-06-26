@@ -1,3 +1,5 @@
+const { avancarEAguardar } = require('./helpers');
+
 async function lerCondicao(frame) {
   // Aguarda a seção de condição aparecer (AJAX popula o tblCondicao)
   await frame.waitForSelector('#tblCondicao tbody tr', { timeout: 15000 });
@@ -11,20 +13,28 @@ async function lerCondicao(frame) {
   });
 }
 
-async function confirmarAVista(frame) {
+// Seleciona a condicao a vista e avanca para o formulario de dados cadastrais.
+// Retorna o frame da tela do formulario.
+async function confirmarAVista(frame, page) {
   await frame.waitForSelector('#tblCondicao input[type="radio"]');
-  await frame.click('#tblCondicao input[type="radio"]');
+  await frame.evaluate(() => {
+    const radio = document.querySelector('#tblCondicao input[type="radio"]');
+    radio.scrollIntoView({ block: 'center' });
+    radio.click();
+  });
 
   // Aguarda #btnAvancar ficar habilitado (vira "Finalizar" nessa etapa)
   await frame.waitForFunction(
     () => !document.querySelector('#btnAvancar')?.disabled,
     { timeout: 5000 }
   );
-  await frame.click('#btnAvancar');
 
-  // Aguarda o modal de dados cadastrais aparecer
-  await frame.waitForSelector('#formDadosCadastrais', { timeout: 10000 });
+  // Avanca e re-adquire o frame ja com o formulario de dados cadastrais
+  const novoFrame = await avancarEAguardar(frame, page, '#btnAvancar', '#formDadosCadastrais', {
+    timeoutPorTentativa: 8000,
+  });
   await new Promise(r => setTimeout(r, 500));
+  return novoFrame;
 }
 
 module.exports = { lerCondicao, confirmarAVista };

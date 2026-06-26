@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const { obterSessao, encerrarSessao } = require('../src/sessionManager');
+const { obterFrame } = require('../src/portal/helpers');
 const { confirmarAVista } = require('../src/portal/condicao');
 const { preencherDados } = require('../src/portal/dados');
 const { gerarBoleto, verificarBoletoDisponivel } = require('../src/portal/boleto');
@@ -17,28 +18,39 @@ router.post('/sessao/:id/confirmar', async (req, res) => {
     return res.status(400).json({ erro: `Campos obrigatórios ausentes: ${faltando.join(', ')}` });
   }
 
-  const sessao = obterSessao(id);
-  const { page, frame } = sessao;
+  try {
+    const sessao = obterSessao(id);
+    const { page } = sessao;
 
-  await confirmarAVista(frame);
-  const { nomeAluno } = await preencherDados(frame, { email, telefone1, telefone2, endereco, bairro, cidade, uf, cep });
+    // Re-adquire o frame: entre /selecionar-instituicao e esta chamada o usuario
+    // respondeu varias mensagens; a referencia salva pode estar obsoleta
+    const frame = await obterFrame(page);
 
-  const boletoDisponivel = await verificarBoletoDisponivel(frame);
+    const frameForm = await confirmarAVista(frame, page);
+    const { nomeAluno, frame: frameAcomp } = await preencherDados(
+      frameForm, page, { email, telefone1, telefone2, endereco, bairro, cidade, uf, cep }
+    );
 
-  if (!boletoDisponivel) {
+    const boletoDisponivel = await verificarBoletoDisponivel(frameAcomp);
+
+    if (!boletoDisponivel) {
+      await encerrarSessao(id);
+      const primeiroNome = nomeAluno.split(' ')[0] || nomeAluno;
+      return res.json({
+        sucesso: true,
+        tipoBoleto: 'email',
+        mensagem: `Perfeito, ${primeiroNome}! Já lançamos a sua negociação em nosso portal e em breve o boleto chegará no seu e-mail. Obrigado!`,
+      });
+    }
+
+    const { pdfBase64, linhaDigitavel } = await gerarBoleto(page, frameAcomp);
     await encerrarSessao(id);
-    const primeiroNome = nomeAluno.split(' ')[0] || nomeAluno;
-    return res.json({
-      sucesso: true,
-      tipoBoleto: 'email',
-      mensagem: `Perfeito, ${primeiroNome}! Já lançamos a sua negociação em nosso portal e em breve o boleto chegará no seu e-mail. Obrigado!`,
-    });
+
+    res.json({ sucesso: true, tipoBoleto: 'boleto', linhaDigitavel, pdfBase64 });
+  } catch (err) {
+    await encerrarSessao(id).catch(() => {});
+    return res.status(500).json({ sucesso: false, erro: err.message || 'Falha ao confirmar negociação.' });
   }
-
-  const { pdfBase64, linhaDigitavel } = await gerarBoleto(page, frame);
-  await encerrarSessao(id);
-
-  res.json({ sucesso: true, tipoBoleto: 'boleto', linhaDigitavel, pdfBase64 });
 });
 
 module.exports = router;
