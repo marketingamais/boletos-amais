@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const { criarSessao, obterSessao, encerrarSessao } = require('../src/sessionManager');
-const { login, obterFrame } = require('../src/portal/login');
+const { login, obterFrame, obterNomeCliente } = require('../src/portal/login');
 const { listarInstituicoes, selecionarInstituicao } = require('../src/portal/instituicoes');
 const { selecionarTodasParcelas } = require('../src/portal/parcelas');
 const { lerCondicao } = require('../src/portal/condicao');
@@ -22,6 +22,12 @@ router.post('/sessao/iniciar', async (req, res) => {
     const frame = await login(page, cpf);
     sessao.frame = frame;
 
+    // Nome do cliente (best-effort, via modal de Perfil). Primeiro nome para
+    // a personalizacao da conversa; '' se nao houver cadastro.
+    const nomeCompleto = await obterNomeCliente(frame);
+    const nomeCliente = nomeCompleto ? nomeCompleto.split(' ')[0] : '';
+    sessao.nomeCliente = nomeCliente;
+
     const instituicoes = await listarInstituicoes(frame);
 
     if (instituicoes.length === 0) {
@@ -39,6 +45,7 @@ router.post('/sessao/iniciar', async (req, res) => {
 
       return res.json({
         sessionId,
+        nomeCliente,
         instituicao: instituicoes[0].nome,
         valorTotal: valor,
         vencimento,
@@ -47,7 +54,7 @@ router.post('/sessao/iniciar', async (req, res) => {
     }
 
     // Múltiplas: pausa para o N8N perguntar ao usuário
-    return res.json({ sessionId, aguardandoEscolha: true, instituicoes });
+    return res.json({ sessionId, nomeCliente, aguardandoEscolha: true, instituicoes });
   } catch (err) {
     // Garante que o browser nao vaze se algo falhar no meio do fluxo
     if (sessionId) await encerrarSessao(sessionId).catch(() => {});
