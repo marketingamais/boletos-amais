@@ -32,8 +32,38 @@ async function tentarLogin(page, cpf) {
   await new Promise(r => setTimeout(r, 1500));
   frame = await obterFrame(page);
 
-  // Aguarda tabela de instituicoes aparecer (AJAX dentro do iframe novo)
-  await frame.waitForSelector('#tblContrato tbody tr', { timeout: 15000 });
+  // Aguarda tabela de instituicoes aparecer (AJAX dentro do iframe novo).
+  // Se o portal exibir erro (CPF invalido/nao cadastrado), captura o texto e
+  // lanca erro descritivo antes que o timeout generico dificulte o diagnostico.
+  try {
+    await frame.waitForSelector('#tblContrato tbody tr', { timeout: 15000 });
+  } catch (timeoutErr) {
+    const textoErro = await frame.evaluate(() => {
+      const candidatos = [
+        '.alert-danger',
+        '.alert-warning[role="alert"]',
+        '#mensagemErro',
+        '#msgErro',
+        '.error-msg',
+      ];
+      for (const sel of candidatos) {
+        const el = document.querySelector(sel);
+        if (el && el.offsetParent !== null) {
+          const txt = el.textContent.trim();
+          if (txt) return txt;
+        }
+      }
+      // Fallback: procura padrao de erro no texto visivel da pagina
+      const corpo = document.body.innerText || '';
+      const match = corpo.match(
+        /[^\n.!?]{0,60}(?:não encontrado|não cadastrado|inválido|não existe|cpf inválido)[^\n.!?]{0,60}/i
+      );
+      return match ? match[0].trim() : '';
+    }).catch(() => '');
+
+    const msg = textoErro || 'CPF não encontrado em nossa base de dados.';
+    throw new Error(`CPF_NAO_ENCONTRADO: ${msg}`);
+  }
 
   return frame;
 }
