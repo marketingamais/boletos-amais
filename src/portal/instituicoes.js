@@ -1,3 +1,5 @@
+const { clicarBotao } = require('./helpers');
+
 async function listarInstituicoes(frame) {
   await frame.waitForSelector('#tblContrato tbody tr');
 
@@ -17,10 +19,12 @@ async function selecionarInstituicao(frame, indice) {
   );
   if (indice >= count) throw new Error(`Instituição no índice ${indice} não encontrada (total: ${count}).`);
 
-  // Usa JS click para evitar "Node is either not clickable or not an Element"
-  // que ocorre quando Puppeteer tenta mover o mouse ate um ElementHandle stale/coberto
+  // Seleciona o radio via JS (funciona mesmo fora da viewport, sem o check de
+  // clickability do Puppeteer)
   await frame.evaluate((idx) => {
-    document.querySelectorAll('#tblContrato input[name="selBanco"]')[idx].click();
+    const radio = document.querySelectorAll('#tblContrato input[name="selBanco"]')[idx];
+    radio.scrollIntoView({ block: 'center' });
+    radio.click();
   }, indice);
 
   // Aguarda #btnAvancar ficar habilitado
@@ -28,9 +32,8 @@ async function selecionarInstituicao(frame, indice) {
     () => !document.querySelector('#btnAvancar')?.disabled,
     { timeout: 5000 }
   );
-  // frame.click() usa eventos de mouse completos (mousedown/mouseup/click) que o
-  // portal precisa para disparar o AJAX; frame.evaluate/.click() nao e suficiente
-  await frame.click('#btnAvancar');
+  // clicarBotao rola ate o botao e usa eventos de mouse reais (necessarios para o AJAX)
+  await clicarBotao(frame, '#btnAvancar');
 
   // Aguarda tabela de parcelas ser populada
   await frame.waitForSelector('#tblParcela tbody tr', { timeout: 15000 });

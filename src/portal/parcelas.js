@@ -1,3 +1,5 @@
+const { clicarBotao } = require('./helpers');
+
 async function selecionarTodasParcelas(frame, page) {
   await frame.waitForSelector('#tblParcela tbody tr');
 
@@ -13,11 +15,13 @@ async function selecionarTodasParcelas(frame, page) {
     }))
   );
 
-  // Clica na primeira linha
+  // Clica na primeira linha (rola ate ela antes, evitando "not clickable")
+  await linhas[0].scrollIntoViewIfNeeded?.().catch(() => {});
   await linhas[0].click();
 
   // SHIFT+click na última para selecionar todas
   if (linhas.length > 1) {
+    await linhas[linhas.length - 1].scrollIntoViewIfNeeded?.().catch(() => {});
     await page.keyboard.down('Shift');
     await linhas[linhas.length - 1].click();
     await page.keyboard.up('Shift');
@@ -28,7 +32,7 @@ async function selecionarTodasParcelas(frame, page) {
     () => !document.querySelector('#btnAvancar')?.disabled,
     { timeout: 5000 }
   );
-  await frame.click('#btnAvancar');
+  await clicarBotao(frame, '#btnAvancar');
 
   // Aguarda tabela de condição ser populada
   await frame.waitForSelector('#tblCondicao tbody tr', { timeout: 15000 });
