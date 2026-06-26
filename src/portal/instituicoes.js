@@ -13,9 +13,12 @@ async function listarInstituicoes(frame) {
   );
 }
 
-// Seleciona a instituicao pelo indice e avanca para a tela de parcelas.
+// Seleciona a instituicao pelo indice e avanca.
+// - Divida "Aberta": cai na tela de parcelas (#tblParcela).
+// - Divida "Negociada": o portal pula direto para a tela de boleto/acompanhamento
+//   (#tblAcompanhamento), sem parcelas nem condicao.
 // Retorna o frame da nova tela (o iframe renavega ao avancar).
-async function selecionarInstituicao(frame, page, indice) {
+async function selecionarInstituicao(frame, page, indice, ehNegociada = false) {
   const count = await frame.evaluate(() =>
     document.querySelectorAll('#tblContrato input[name="selBanco"]').length
   );
@@ -34,8 +37,9 @@ async function selecionarInstituicao(frame, page, indice) {
     { timeout: 5000 }
   );
 
-  // Avanca e re-adquire o frame ja na tela de parcelas
-  return avancarEAguardar(frame, page, '#btnAvancar', '#tblParcela tbody tr', {
+  // Avanca e re-adquire o frame ja na tela seguinte
+  const esperaSelector = ehNegociada ? '#tblAcompanhamento tbody tr' : '#tblParcela tbody tr';
+  return avancarEAguardar(frame, page, '#btnAvancar', esperaSelector, {
     timeoutPorTentativa: 10000,
   });
 }

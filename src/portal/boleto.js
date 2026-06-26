@@ -2,6 +2,35 @@ const pdfParse = require('pdf-parse');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { clicarBotao } = require('./helpers');
+
+// Le a tabela de acompanhamento (tela de boleto). Colunas: Sel, Parcela, Valor, Vencimento.
+// Retorna o valor total (soma das parcelas) e o vencimento da primeira parcela.
+async function lerAcompanhamento(frame) {
+  await frame.waitForSelector('#tblAcompanhamento tbody tr', { timeout: 15000 });
+
+  const parcelas = await frame.evaluate(() =>
+    [...document.querySelectorAll('#tblAcompanhamento tbody tr')].map(tr => ({
+      numero: tr.querySelector('td:nth-child(2)')?.textContent?.trim() || '',
+      valor: tr.querySelector('td:nth-child(3)')?.textContent?.trim() || '',
+      vencimento: tr.querySelector('td:nth-child(4)')?.textContent?.trim() || '',
+    }))
+  );
+
+  const vencimento = parcelas[0]?.vencimento || '';
+  let valorTotal;
+  if (parcelas.length <= 1) {
+    valorTotal = parcelas[0]?.valor || '';
+  } else {
+    const total = parcelas.reduce((acc, p) => {
+      const n = parseFloat(String(p.valor).replace(/\./g, '').replace(',', '.'));
+      return acc + (Number.isNaN(n) ? 0 : n);
+    }, 0);
+    valorTotal = total.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  }
+
+  return { valorTotal, vencimento, parcelas };
+}
 
 async function verificarBoletoDisponivel(frame) {
   await new Promise(r => setTimeout(r, 1000));
@@ -26,7 +55,7 @@ async function gerarBoleto(page, frame) {
   });
 
   // Clica no botão Salvar e aguarda o arquivo aparecer no diretório
-  await frame.click('#btnSalvarBoleto');
+  await clicarBotao(frame, '#btnSalvarBoleto');
 
   const pdfPath = await aguardarDownload(downloadDir, 20000);
   const pdfBuffer = fs.readFileSync(pdfPath);
@@ -66,4 +95,4 @@ async function extrairLinhaDigitavel(pdfBuffer) {
   }
 }
 
-module.exports = { gerarBoleto, verificarBoletoDisponivel };
+module.exports = { gerarBoleto, verificarBoletoDisponivel, lerAcompanhamento };
