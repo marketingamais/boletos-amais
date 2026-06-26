@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const { criarSessao, obterSessao, encerrarSessao } = require('../src/sessionManager');
-const { login } = require('../src/portal/login');
+const { login, obterFrame } = require('../src/portal/login');
 const { listarInstituicoes, selecionarInstituicao } = require('../src/portal/instituicoes');
 const { selecionarTodasParcelas } = require('../src/portal/parcelas');
 const { lerCondicao } = require('../src/portal/condicao');
@@ -57,15 +57,25 @@ router.post('/sessao/iniciar', async (req, res) => {
 router.post('/sessao/:id/selecionar-instituicao', async (req, res) => {
   const { id } = req.params;
   const { indice } = req.body;
-  const sessao = obterSessao(id);
-  const { page, frame } = sessao;
 
-  const instituicoes = await listarInstituicoes(frame);
-  await selecionarInstituicao(frame, indice);
-  const parcelas = await selecionarTodasParcelas(frame, page);
-  const { valor, vencimento } = await lerCondicao(frame);
+  try {
+    const sessao = obterSessao(id);
+    const { page } = sessao;
 
-  res.json({ instituicao: instituicoes[indice]?.nome || '', valorTotal: valor, vencimento, parcelas });
+    // Re-adquire o frame: a referencia salva em sessao.frame pode ficar stale
+    // entre a chamada de /iniciar e esta, dependendo do tempo de resposta do usuario
+    const frame = await obterFrame(page);
+    sessao.frame = frame;
+
+    const instituicoes = await listarInstituicoes(frame);
+    await selecionarInstituicao(frame, indice);
+    const parcelas = await selecionarTodasParcelas(frame, page);
+    const { valor, vencimento } = await lerCondicao(frame);
+
+    res.json({ instituicao: instituicoes[indice]?.nome || '', valorTotal: valor, vencimento, parcelas });
+  } catch (err) {
+    return res.status(500).json({ sucesso: false, erro: err.message || 'Falha ao selecionar instituição.' });
+  }
 });
 
 // DELETE /sessao/:id

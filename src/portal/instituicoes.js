@@ -12,16 +12,23 @@ async function listarInstituicoes(frame) {
 }
 
 async function selecionarInstituicao(frame, indice) {
-  const radios = await frame.$$('#tblContrato input[name="selBanco"]');
-  if (!radios[indice]) throw new Error(`Instituição no índice ${indice} não encontrada.`);
-  await radios[indice].click();
+  const count = await frame.evaluate(() =>
+    document.querySelectorAll('#tblContrato input[name="selBanco"]').length
+  );
+  if (indice >= count) throw new Error(`Instituição no índice ${indice} não encontrada (total: ${count}).`);
+
+  // Usa JS click para evitar "Node is either not clickable or not an Element"
+  // que ocorre quando Puppeteer tenta mover o mouse ate um ElementHandle stale/coberto
+  await frame.evaluate((idx) => {
+    document.querySelectorAll('#tblContrato input[name="selBanco"]')[idx].click();
+  }, indice);
 
   // Aguarda #btnAvancar ficar habilitado
   await frame.waitForFunction(
     () => !document.querySelector('#btnAvancar')?.disabled,
     { timeout: 5000 }
   );
-  await frame.click('#btnAvancar');
+  await frame.evaluate(() => document.querySelector('#btnAvancar').click());
 
   // Aguarda tabela de parcelas ser populada
   await frame.waitForSelector('#tblParcela tbody tr', { timeout: 15000 });
