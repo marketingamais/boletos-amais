@@ -15,8 +15,6 @@ async function criarSessao() {
       '--disable-dev-shm-usage',
       '--disable-gpu',
       '--no-first-run',
-      '--no-zygote',
-      '--single-process',
     ],
   });
   const page = await browser.newPage();

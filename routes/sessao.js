@@ -10,38 +10,47 @@ const router = Router();
 // POST /sessao/iniciar
 router.post('/sessao/iniciar', async (req, res) => {
   const { cpf } = req.body;
-  if (!cpf) return res.status(400).json({ erro: 'CPF obrigatório.' });
+  if (!cpf) return res.status(400).json({ sucesso: false, erro: 'CPF obrigatório.' });
 
-  const { sessionId, page, sessao } = await criarSessao();
+  let sessionId;
+  try {
+    const criada = await criarSessao();
+    sessionId = criada.sessionId;
+    const { page, sessao } = criada;
 
-  // Login retorna o frame (iframe do portal)
-  const frame = await login(page, cpf);
-  sessao.frame = frame;
+    // Login retorna o frame (iframe do portal)
+    const frame = await login(page, cpf);
+    sessao.frame = frame;
 
-  const instituicoes = await listarInstituicoes(frame);
+    const instituicoes = await listarInstituicoes(frame);
 
-  if (instituicoes.length === 0) {
-    await encerrarSessao(sessionId);
-    return res.status(404).json({ erro: 'Nenhuma dívida encontrada para este CPF.' });
+    if (instituicoes.length === 0) {
+      await encerrarSessao(sessionId);
+      return res.status(404).json({ sucesso: false, erro: 'Nenhuma dívida encontrada para este CPF.' });
+    }
+
+    // Uma única instituição: avança automaticamente até a condição
+    if (instituicoes.length === 1) {
+      await selecionarInstituicao(frame, 0);
+      const parcelas = await selecionarTodasParcelas(frame, page);
+      const { valor, vencimento } = await lerCondicao(frame);
+
+      return res.json({
+        sessionId,
+        instituicao: instituicoes[0].nome,
+        valorTotal: valor,
+        vencimento,
+        parcelas,
+      });
+    }
+
+    // Múltiplas: pausa para o N8N perguntar ao usuário
+    return res.json({ sessionId, aguardandoEscolha: true, instituicoes });
+  } catch (err) {
+    // Garante que o browser nao vaze se algo falhar no meio do fluxo
+    if (sessionId) await encerrarSessao(sessionId).catch(() => {});
+    return res.status(500).json({ sucesso: false, erro: err.message || 'Falha ao iniciar sessão.' });
   }
-
-  // Uma única instituição: avança automaticamente até a condição
-  if (instituicoes.length === 1) {
-    await selecionarInstituicao(frame, 0);
-    const parcelas = await selecionarTodasParcelas(frame, page);
-    const { valor, vencimento } = await lerCondicao(frame);
-
-    return res.json({
-      sessionId,
-      instituicao: instituicoes[0].nome,
-      valorTotal: valor,
-      vencimento,
-      parcelas,
-    });
-  }
-
-  // Múltiplas: pausa para o N8N perguntar ao usuário
-  return res.json({ sessionId, aguardandoEscolha: true, instituicoes });
 });
 
 // POST /sessao/:id/selecionar-instituicao
