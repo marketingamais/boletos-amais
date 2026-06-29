@@ -12,7 +12,11 @@ router.post('/sessao/:id/confirmar', async (req, res) => {
   const { id } = req.params;
   const { email, telefone1, telefone2, endereco, bairro, cidade, uf, cep } = req.body;
 
-  const camposObrigatorios = { email, telefone1, endereco, bairro, cidade, uf, cep };
+  // Apenas e-mail e telefone sao coletados do cliente. Endereco/bairro/cidade/uf/cep
+  // sao 'required' no portal, mas ja vem pre-preenchidos do cadastro: preencherDados
+  // ignora valores vazios (nao limpa o campo), entao o portal mantem os dados que ja
+  // tem e a validacao passa. Por isso aqui exigimos somente email e telefone1.
+  const camposObrigatorios = { email, telefone1 };
   const faltando = Object.entries(camposObrigatorios).filter(([, v]) => !v).map(([k]) => k);
   if (faltando.length > 0) {
     return res.status(400).json({ erro: `Campos obrigatórios ausentes: ${faltando.join(', ')}` });

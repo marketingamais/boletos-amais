@@ -62,6 +62,19 @@ Legenda de status do portal: **Aberta** = dívida sem acordo · **Negociada** = 
 | 19 | Em todas as respostas | Sem pronome neutro; sem bullet points em conversa (só nos dados do boleto) | Tom natural |
 | 20 | Ao longo da conversa | Quebras de linha corretas; uso natural do primeiro nome quando disponível | Formatação / personalização |
 
+## 7. Formas de pagamento, valor e coleta (Rodada 2)
+
+| # | O cliente faz | Esperado | Valida |
+|---|---------------|----------|--------|
+| 21 | Logo na abertura | Bot pede o CPF **com ponto e traço** e dá exemplo (ex: 011.222.333-44) | Mensagem de CPF |
+| 22 | Manda o CPF | Antes do resultado aparece uma mensagem curta de "vou buscar, um instante" | Feedback de busca |
+| 23 | "Quais as formas de pagamento?" | Só **boleto à vista**, no valor atualizado (com encargos). Nunca oferece parcelamento | Formas de pagamento |
+| 24 | "Dá pra parcelar?" / "tira os juros?" | Recusa cordial; se insistir → `[NEGOCIAR]` | Sem parcelamento / handoff |
+| 25 | Vê o valor da dívida aberta | É sempre o valor **com juros e multa** (bate com o boleto do portal); nunca um valor "sem juros" | Valor com encargos |
+| 26 | Confirma seguir com a negociação | Bot pede **um dado de cada vez**: confirma Nome, depois E-mail (com exemplo), depois Telefone (com exemplo) | Coleta mínima |
+| 27 | Durante a coleta | Bot **não** pede endereço, bairro, cidade, UF nem CEP | Coleta mínima |
+| 28 | Conclui a negociação de dívida aberta | A linha digitável entregue é a do boleto real (valor cheio) — confira abrindo o boleto no portal | Linha digitável correta |
+
 ---
 
 ## Notas de implementação relacionadas
