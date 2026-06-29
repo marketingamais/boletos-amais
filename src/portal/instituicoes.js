@@ -3,13 +3,23 @@ const { avancarEAguardar } = require('./helpers');
 async function listarInstituicoes(frame) {
   await frame.waitForSelector('#tblContrato tbody tr');
 
+  // Extrai valor/vencimento de forma defensiva: varre as celulas da linha e
+  // identifica por padrao de texto (R$ / data dd/mm/aaaa) em vez de depender do
+  // indice exato da coluna, que pode variar. Best-effort: '' quando ausente.
   return frame.evaluate(() =>
-    [...document.querySelectorAll('#tblContrato tbody tr')].map((tr, indice) => ({
-      indice,
-      nome: tr.querySelector('td:nth-child(2)')?.textContent?.trim() || '',
-      status: tr.querySelector('td:nth-child(3) span')?.textContent?.trim() || '',
-      banco: tr.querySelector('input[name="selBanco"]')?.dataset?.banco || '',
-    }))
+    [...document.querySelectorAll('#tblContrato tbody tr')].map((tr, indice) => {
+      const celulas = [...tr.querySelectorAll('td')].map(td => td.textContent.trim());
+      const valor = celulas.find(t => /R?\$?\s*\d[\d.]*,\d{2}/.test(t)) || '';
+      const vencimento = celulas.find(t => /\d{2}\/\d{2}\/\d{4}/.test(t)) || '';
+      return {
+        indice,
+        nome: tr.querySelector('td:nth-child(2)')?.textContent?.trim() || '',
+        status: tr.querySelector('td:nth-child(3) span')?.textContent?.trim() || '',
+        valor,
+        vencimento,
+        banco: tr.querySelector('input[name="selBanco"]')?.dataset?.banco || '',
+      };
+    })
   );
 }
 

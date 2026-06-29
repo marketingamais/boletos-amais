@@ -71,22 +71,11 @@ router.post('/sessao/iniciar', async (req, res) => {
       return res.status(404).json({ sucesso: false, erro: 'Nenhuma dívida encontrada para este CPF.' });
     }
 
-    // Uma única instituição: avança automaticamente.
-    if (instituicoes.length === 1) {
-      const { frame: frameResultado, ...resultado } = await resolverInstituicao(page, frame, instituicoes, 0);
-
-      // Divida ja negociada: entrega o boleto existente e encerra a sessao
-      if (resultado.jaNegociada) {
-        await encerrarSessao(sessionId);
-        return res.json({ sessionId, nomeCliente, ...resultado });
-      }
-
-      sessao.frame = frameResultado;
-      return res.json({ sessionId, nomeCliente, ...resultado });
-    }
-
-    // Múltiplas: pausa para o N8N perguntar ao usuário
-    return res.json({ sessionId, nomeCliente, aguardandoEscolha: true, instituicoes });
+    // Inventario puro: SEMPRE retorna a lista completa de instituicoes com seu
+    // status (Aberta/Negociada), sem resolver nem fechar a sessao. O agente
+    // recebe o panorama atual e decide o proximo passo (selecionar-instituicao).
+    // A sessao fica viva na tela da lista de contratos (sessao.frame ja salvo).
+    return res.json({ sessionId, nomeCliente, instituicoes });
   } catch (err) {
     // Garante que o browser nao vaze se algo falhar no meio do fluxo
     if (sessionId) await encerrarSessao(sessionId).catch(() => {});
